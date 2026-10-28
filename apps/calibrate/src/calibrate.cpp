@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <stdio.h>
+#include <string>
 
 #include "McCalib.hpp"
 #include "logger.h"
@@ -11,11 +12,17 @@
  *
  * @param config_path Path to the YAML configuration file.
  */
-void runCalibrationWorkflow(const std::filesystem::path &config_path) {
+void runCalibrationWorkflow(const std::filesystem::path &config_path,
+                            const bool detect_only) {
   // Instantiate the calibration and initialize the parameters
   McCalib::Calibration Calib(config_path);
   Calib.boardExtraction();
   LOG_INFO << "Board extraction done!";
+  // Preserve detections even if calibration fails, so initialization can be
+  // diagnosed or retried without repeating image extraction.
+  Calib.saveDetectedKeypoints();
+  if (detect_only)
+    return;
 
   // Intrinsic calibration of the cameras
   LOG_INFO << "Intrinsic calibration initiated";
@@ -85,18 +92,17 @@ void runCalibrationWorkflow(const std::filesystem::path &config_path) {
   Calib.saveReprojectionErrorToFile();
   LOG_INFO << "mean reprojection error :: "
            << Calib.computeAvgReprojectionError() << std::endl;
-
-  Calib.saveDetectedKeypoints();
 }
 
 /**
  * @brief Entry point for the calibration application.
  *
- * Expects a single YAML configuration path as argument.
+ * Expects a YAML configuration path and an optional --detect-only flag.
  */
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    LOG_FATAL << "Usage: " << argv[0] << " <config.yml>";
+  if (argc < 2 || argc > 3 ||
+      (argc == 3 && std::string(argv[2]) != "--detect-only")) {
+    LOG_FATAL << "Usage: " << argv[0] << " <config.yml> [--detect-only]";
     return -1;
   }
 
@@ -110,7 +116,7 @@ int main(int argc, char *argv[]) {
   }
 
   auto start = std::chrono::high_resolution_clock::now();
-  runCalibrationWorkflow(config_path);
+  runCalibrationWorkflow(config_path, argc == 3);
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::seconds>(stop - start);

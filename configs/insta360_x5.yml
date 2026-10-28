@@ -1,0 +1,34 @@
+%YAML:1.0
+# Four fixed 5x5 boards, 35 mm squares. Edit to match your printed targets.
+number_x_square: 5
+number_y_square: 5
+resolution_x: 4820
+resolution_y: 4820
+length_square: 0.04
+length_marker: 0.03
+number_board: 4
+boards_index: []
+square_size: 0.035
+number_x_square_per_board: []
+number_y_square_per_board: []
+square_size_per_board: []
+resolution_x_per_board: []
+resolution_y_per_board: []
+distortion_model: 1
+distortion_per_camera: []
+number_camera: 2
+refine_corner: 1
+min_perc_pts: 0.4
+cam_params_path: "None"
+fix_intrinsic: 0
+root_path: "data/x5"
+cam_prefix: "Cam_"
+keypoints_path: "None"
+quaternion_averaging: 1
+ransac_threshold: 3
+number_iterations: 1000
+he_approach: 0
+save_path: "output/x5_detections"
+save_detection: 0
+save_reprojection: 0
+camera_params_file_name: ""
