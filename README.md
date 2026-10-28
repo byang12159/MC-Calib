@@ -5,6 +5,8 @@ Toolbox described in the paper ["MC-Calib: A generic and robust calibration tool
 
 ![](docs/illustration.png)
 
+[Insta360 X5 dual-lens calibration](docs/Insta360-X5.md)
+
 # Installation
 
 For Windows users, follow [this installation guide](/docs/Windows.md).
