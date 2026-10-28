@@ -82,6 +82,7 @@ void runCalibrationWorkflow(const std::filesystem::path &config_path) {
   Calib.saveCamerasParams();
   Calib.save3DObj();
   Calib.save3DObjPose();
+  Calib.saveVisualizationData();
   Calib.saveReprojectionErrorToFile();
   LOG_INFO << "mean reprojection error :: "
            << Calib.computeAvgReprojectionError() << std::endl;

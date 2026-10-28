@@ -202,6 +202,9 @@ public:
   void save3DObj(); // Save 3D objects
   /** @brief Save estimated object poses to disk. */
   void save3DObjPose(); // Save 3D objects pose
+
+  /** @brief Export final optimized poses and observations for interactive viewers. */
+  void saveVisualizationData();
   /** @brief Save detected keypoints for reuse in future runs. */
   void saveDetectedKeypoints() const; // save detection keypoints, can be
                                       // re-used to save time in detection stage
