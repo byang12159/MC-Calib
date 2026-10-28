@@ -390,9 +390,9 @@ void Calibration::saveCamerasParams() {
           ? save_path_ / camera_params_file_name_
           : save_path_ / "calibrated_cameras_data.yml";
   cv::FileStorage fs(save_path_camera_params, cv::FileStorage::WRITE);
+  fs << "nb_camera" << static_cast<int>(nb_camera_);
   for (const auto &it_cam_group : cam_group_) {
     std::shared_ptr<CameraGroup> cur_cam_group = it_cam_group.second;
-    fs << "nb_camera" << static_cast<int>(nb_camera_);
     for (const auto &it_cam : cur_cam_group->cameras_) {
       std::shared_ptr<Camera> cur_cam = it_cam.second.lock();
       if (cur_cam) {
@@ -411,9 +411,144 @@ void Calibration::saveCamerasParams() {
            << cur_cam_group->getCameraPoseMat(cur_cam->cam_idx_).inv() << "}";
       }
     }
-
-    fs.release();
   }
+  fs.release();
+}
+
+/**
+ * @brief Export final group poses, image paths and native reprojections for
+ * viewers.
+ *
+ * Unlike the legacy per-camera pose file, these transforms come directly from
+ * the camera-group state optimized by Ceres. Lengths retain square_size units.
+ */
+void Calibration::saveVisualizationData() {
+  cv::FileStorage fs((save_path_ / "visualization_data.yml").string(),
+                     cv::FileStorage::WRITE);
+  fs << "schema_version" << 1;
+  fs << "translation_units"
+     << "same_as_configured_square_size";
+  fs << "cameras"
+     << "[";
+  for (const auto &group_entry : cam_group_) {
+    const auto &group = group_entry.second;
+    for (const auto &entry : group->cameras_) {
+      const auto camera = entry.second.lock();
+      if (!camera)
+        continue;
+      fs << "{"
+         << "camera_id" << camera->cam_idx_;
+      fs << "camera_group_id" << group->cam_group_idx_;
+      fs << "reference_camera_id" << group->id_ref_cam_;
+      fs << "camera_to_group"
+         << group->getCameraPoseMat(camera->cam_idx_).inv();
+      fs << "width" << camera->im_cols_ << "height" << camera->im_rows_;
+      fs << "}";
+    }
+  }
+  fs << "]"
+     << "objects"
+     << "[";
+  for (const auto &entry : object_3d_) {
+    const auto &object = entry.second;
+    fs << "{"
+       << "object_id" << object->obj_id_;
+    fs << "points"
+       << cv::Mat(object->pts_3d_)
+              .reshape(1, static_cast<int>(object->pts_3d_.size()));
+    fs << "boards"
+       << "[";
+    for (const auto &board_entry : object->boards_) {
+      const auto board = board_entry.second.lock();
+      if (!board)
+        continue;
+      std::vector<int> indices;
+      for (unsigned int i = 0; i < board->nb_pts_; ++i)
+        indices.push_back(object->pts_board_2_obj_.at(
+            std::make_pair(board->board_id_, static_cast<int>(i))));
+      fs << "{"
+         << "board_id" << board->board_id_;
+      fs << "squares_x" << board->nb_x_square_;
+      fs << "squares_y" << board->nb_y_square_;
+      fs << "point_indices" << indices << "}";
+    }
+    fs << "]"
+       << "}";
+  }
+  fs << "]"
+     << "frames"
+     << "[";
+  for (const auto &entry : frames_) {
+    const auto &frame = entry.second;
+    fs << "{"
+       << "frame_id" << frame->frame_idx_;
+    fs << "images"
+       << "[";
+    for (const auto &image : frame->frame_path_)
+      fs << "{"
+         << "camera_id" << image.first << "path" << image.second.string()
+         << "}";
+    fs << "]"
+       << "groups"
+       << "[";
+    for (const auto &group_entry : frame->cam_group_observations_) {
+      const auto observation = group_entry.second.lock();
+      if (!observation)
+        continue;
+      const auto group = observation->cam_group_.lock();
+      if (!group)
+        continue;
+      fs << "{"
+         << "camera_group_id" << group->cam_group_idx_;
+      fs << "poses"
+         << "[";
+      for (const auto &pose : observation->object_pose_)
+        fs << "{"
+           << "object_id" << pose.first << "object_to_group"
+           << observation->getObjectPoseMat(pose.first) << "}";
+      fs << "]"
+         << "observations"
+         << "[";
+      for (const auto &object_entry : observation->object_observations_) {
+        const auto object_observation = object_entry.second.lock();
+        if (!object_observation)
+          continue;
+        const auto object = object_observation->object_3d_.lock();
+        const auto camera = object_observation->cam_.lock();
+        if (!object || !camera)
+          continue;
+        std::vector<cv::Point3f> points;
+        for (const int index : object_observation->pts_id_)
+          points.push_back(object->pts_3d_.at(index));
+        if (points.empty())
+          continue;
+        const auto group_points = transform3DPts(
+            points, observation->getObjectRotVec(object->obj_id_),
+            observation->getObjectTransVec(object->obj_id_));
+        std::vector<cv::Point2f> projected;
+        projectPointsWithDistortion(
+            group_points, group->getCameraRotVec(camera->cam_idx_),
+            group->getCameraTransVec(camera->cam_idx_), camera->getCameraMat(),
+            camera->getDistortionVectorVector(), camera->distortion_model_,
+            projected);
+        fs << "{"
+           << "camera_id" << camera->cam_idx_;
+        fs << "object_id" << object->obj_id_;
+        fs << "point_indices" << object_observation->pts_id_;
+        fs << "detected"
+           << cv::Mat(object_observation->pts_2d_)
+                  .reshape(1, static_cast<int>(points.size()));
+        fs << "projected"
+           << cv::Mat(projected).reshape(1, static_cast<int>(points.size()))
+           << "}";
+      }
+      fs << "]"
+         << "}";
+    }
+    fs << "]"
+       << "}";
+  }
+  fs << "]";
 }
 
 /**

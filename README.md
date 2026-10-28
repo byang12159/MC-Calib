@@ -163,6 +163,8 @@ save_reprojection: 1
 camera_params_file_name: "" # "name.yml"
 ```
 
+[Interactive calibration viewer](docs/Interactive-Viewer.md)
+
 ## Output explanation
 
 The calibration toolbox automatically outputs four ```*.yml``` files. To illustrate them, we propose to display the results obtained from the calibration of a hybrid stereo-vision system.

@@ -93,7 +93,7 @@ public:
    * @brief Get camera pose as a homogeneous transform.
    *
    * @param id_cam Camera id in the group.
-   * @return 4x4 transform from camera frame to group reference frame.
+   * @return 4x4 transform from group reference frame to camera frame.
    */
   cv::Mat getCameraPoseMat(const int id_cam);
 

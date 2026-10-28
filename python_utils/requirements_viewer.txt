@@ -1,0 +1,7 @@
+# Optional interactive viewer; not required by calibration or static plots.
+viser==1.1.1
+plotly==7.1.0
+numpy>=1.26,<3
+opencv-python-headless==4.10.0.84
+Pillow>=10,<14
+trimesh>=4,<6
